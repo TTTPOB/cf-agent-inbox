@@ -7,6 +7,7 @@ import { jwtVerify, createRemoteJWKSet } from "jose";
 import { createRequestHandler } from "react-router";
 import { app as apiApp, receiveEmail } from "./index";
 import type { Env } from "./types";
+import { resolveMailboxAccess, type AccessVariables } from "./lib/access";
 
 export { MailboxDO } from "./durableObject";
 
@@ -36,12 +37,13 @@ function getAccessUrls(teamDomain: string) {
 }
 
 // Main app that wraps the API and adds React Router fallback
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env; Variables: AccessVariables }>();
 
 // Cloudflare Access JWT validation middleware (production only)
 app.use("*", async (c, next) => {
 	// Skip validation in development
 	if (import.meta.env.DEV) {
+		c.set("allowedMailboxes", null);
 		return next();
 	}
 
@@ -63,16 +65,17 @@ app.use("*", async (c, next) => {
 	try {
 		const { issuer, certsUrl } = getAccessUrls(TEAM_DOMAIN);
 		const JWKS = createRemoteJWKSet(certsUrl);
-		await jwtVerify(token, JWKS, {
+		const { payload } = await jwtVerify(token, JWKS, {
 			issuer,
 			audience: POLICY_AUD,
 		});
+		const access = resolveMailboxAccess(payload, c.env.SERVICE_TOKEN_MAILBOXES);
+		if (!access) return c.text("Access identity is not authorized", 403);
+		c.set("allowedMailboxes", access.allowedMailboxes);
 	} catch {
 		return c.text("Invalid or expired Access token", 403);
 	}
 
-	// Authorization model note: once a teammate passes the shared Cloudflare
-	// Access policy, they can access all mailboxes in this app by design.
 	return next();
 });
 

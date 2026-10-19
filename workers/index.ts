@@ -12,7 +12,8 @@ import { parsePagination, parseDateFilters, rawEmailKey } from "./lib/inbox";
 import { HTTPException } from "hono/http-exception";
 import { Folders } from "../shared/folders";
 import type { Env } from "./types";
-import { requireMailbox, type MailboxContext } from "./lib/mailbox";
+import { requireMailbox, requireMailboxAccess, type MailboxContext } from "./lib/mailbox";
+import { canAccessMailbox, normalizeMailboxId } from "./lib/access";
 
 type AppContext = Context<MailboxContext>;
 
@@ -62,14 +63,20 @@ app.use("/api/*", cors({
 		return undefined;
 	},
 }));
-app.use("/api/v1/mailboxes/:mailboxId/*", requireMailbox);
+app.use("/api/v1/mailboxes/:mailboxId", requireMailboxAccess);
+app.use("/api/v1/mailboxes/:mailboxId/*", requireMailboxAccess, requireMailbox);
 
 // -- Config ---------------------------------------------------------
 
 app.get("/api/v1/config", (c) => {
 	const domainsRaw = c.env.DOMAINS || "";
-	const domains = domainsRaw.split(",").map((d) => d.trim()).filter(Boolean);
-	const emailAddresses = c.env.EMAIL_ADDRESSES ?? [];
+	let domains = domainsRaw.split(",").map((d) => d.trim()).filter(Boolean);
+	let emailAddresses: string[] = c.env.EMAIL_ADDRESSES ?? [];
+	const allowed = c.var.allowedMailboxes;
+	if (allowed != null) {
+		emailAddresses = (emailAddresses.length ? emailAddresses : allowed).filter(a => canAccessMailbox(allowed, a));
+		domains = domains.filter(d => allowed.some(a => a.split("@")[1] === d.toLowerCase()));
+	}
 	return c.json({ domains, emailAddresses });
 });
 
@@ -77,12 +84,13 @@ app.get("/api/v1/config", (c) => {
 
 app.get("/api/v1/mailboxes", async (c) => {
 	const allMailboxes = await listMailboxes(c.env.BUCKET);
-	return c.json(allMailboxes.map((m) => ({ ...m, name: m.id })));
+	return c.json(allMailboxes.filter(m => canAccessMailbox(c.var.allowedMailboxes, m.id)).map((m) => ({ ...m, name: m.id })));
 });
 
 app.post("/api/v1/mailboxes", async (c) => {
 	const { name, settings, email: rawEmail } = CreateMailboxBody.parse(await c.req.json());
-	const email = rawEmail.toLowerCase();
+	const email = normalizeMailboxId(rawEmail);
+	if (!canAccessMailbox(c.var.allowedMailboxes, email)) return c.json({ error: "Mailbox access denied" }, 403);
 	const allowedAddresses = (c.env.EMAIL_ADDRESSES ?? []) as string[];
 	if (allowedAddresses.length > 0 && !allowedAddresses.map((a) => a.toLowerCase()).includes(email)) {
 		return c.json({ error: "Mailbox creation is restricted to configured EMAIL_ADDRESSES" }, 403);
@@ -98,14 +106,14 @@ app.post("/api/v1/mailboxes", async (c) => {
 });
 
 app.get("/api/v1/mailboxes/:mailboxId", async (c) => {
-	const mailboxId = c.req.param("mailboxId")!;
+	const mailboxId = c.var.mailboxId;
 	const obj = await c.env.BUCKET.get(`mailboxes/${mailboxId}.json`);
 	if (!obj) return c.json({ error: "Not found" }, 404);
 	return c.json({ id: mailboxId, name: mailboxId, email: mailboxId, settings: await obj.json() });
 });
 
 app.put("/api/v1/mailboxes/:mailboxId", async (c) => {
-	const mailboxId = c.req.param("mailboxId")!;
+	const mailboxId = c.var.mailboxId;
 	const { settings } = (await c.req.json()) as { settings: Record<string, unknown> };
 	const key = `mailboxes/${mailboxId}.json`;
 	if (!(await c.env.BUCKET.head(key))) return c.json({ error: "Not found" }, 404);
@@ -204,7 +212,7 @@ app.get("/api/v1/mailboxes/:mailboxId/search", async (c: AppContext) => {
 app.get("/api/v1/mailboxes/:mailboxId/emails/:id/raw", async (c: AppContext) => {
 	const id = c.req.param("id")!;
 	if (!(await c.var.mailboxStub.getEmail(id))) return c.json({ error: "Email not found" }, 404);
-	const obj = await c.env.BUCKET.get(rawEmailKey(c.req.param("mailboxId")!, id));
+	const obj = await c.env.BUCKET.get(rawEmailKey(c.var.mailboxId, id));
 	if (!obj) return c.json({ error: "Original email not found" }, 404);
 	return new Response(obj.body, { headers: {
 		"Content-Type": "message/rfc822",

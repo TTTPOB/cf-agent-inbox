@@ -10,18 +10,28 @@
 import { createMiddleware } from "hono/factory";
 import type { MailboxDO } from "../durableObject";
 import type { Env } from "../types";
+import { canAccessMailbox, normalizeMailboxId, type AccessVariables } from "./access";
 
 export type MailboxContext = {
 	Bindings: Env;
-	Variables: {
+	Variables: AccessVariables & {
+		mailboxId: string;
 		mailboxStub: DurableObjectStub<MailboxDO>;
 	};
 };
 
-export const requireMailbox = createMiddleware<MailboxContext>(async (c, next) => {
+export const requireMailboxAccess = createMiddleware<MailboxContext>(async (c, next) => {
+	// Hono has already decoded this path parameter once; never double-decode it.
 	const rawId = c.req.param("mailboxId");
 	if (!rawId) return c.json({ error: "Mailbox ID required" }, 400);
-	const mailboxId = decodeURIComponent(rawId);
+	const mailboxId = normalizeMailboxId(rawId);
+	if (!canAccessMailbox(c.var.allowedMailboxes, mailboxId)) return c.json({ error: "Mailbox access denied" }, 403);
+	c.set("mailboxId", mailboxId);
+	await next();
+});
+
+export const requireMailbox = createMiddleware<MailboxContext>(async (c, next) => {
+	const mailboxId = c.var.mailboxId;
 
 	// Verify mailbox exists
 	const key = `mailboxes/${mailboxId}.json`;

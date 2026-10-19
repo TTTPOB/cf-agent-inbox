@@ -44,8 +44,8 @@ pnpx skills add TTTPOB/cf-agent-inbox --skill cf-agent-inbox
 
 1. 准备 Cloudflare 账户、私有 R2 Standard 桶、SQLite Durable Object 和可用于 Email Routing 的收件域。保留其他邮件服务仍在使用的主域 MX。
 2. 复制 Wrangler 示例为不提交 Git 的 `wrangler.local.jsonc`，填写实际桶、收件域、地址白名单与自定义 hostname。设置 `INBOX_WRANGLER_CONFIG=wrangler.local.jsonc` 供构建使用。
-3. 为 hostname 的 Web 和全部 API 配置 Cloudflare Access：浏览器使用个人身份 Allow 策略，CLI 使用指定 Service Token 的 Service Auth 策略。配置 `TEAM_DOMAIN` 与 `POLICY_AUD`。
-4. 保持 workers.dev、预览 URL 和 R2 公开访问关闭。后端验证 Access JWT 签名、issuer 和 audience；通过该 Access 应用的身份可访问实例内全部邮箱。
+3. 为 hostname 的 Web 和全部 API 配置 Cloudflare Access：浏览器使用个人身份 Allow 策略，CLI 使用指定 Service Token 的 Service Auth 策略。配置 `TEAM_DOMAIN` 与 `POLICY_AUD`，以及 `SERVICE_TOKEN_MAILBOXES`（Service Token Client ID 到允许邮箱数组的 JSON 映射）。没有配置映射的服务身份会被拒绝。
+4. 保持 workers.dev、预览 URL 和 R2 公开访问关闭。后端验证 Access JWT 签名、issuer 和 audience；浏览器个人身份可管理实例；服务身份只能访问映射中允许的邮箱。
 5. 执行 `INBOX_WRANGLER_CONFIG=wrangler.local.jsonc npm run deploy`。使用锁文件中的 Wrangler，以匹配 Vite 插件生成的配置格式。
 6. 在 Web 中创建邮箱，再添加该地址的精确 Email Routing 规则指向 Worker。不要覆盖已有 catch-all。
 7. 从原邮箱设置转发，检查邮件正文与附件。Free 能否满足实际邮件负载应通过云端验证，不以本地耗时代替计费 CPU。
