@@ -6,10 +6,7 @@ import { Badge, Button, Dialog, Input, Tooltip } from "@cloudflare/kumo";
 import {
 	ArchiveIcon,
 	CaretLeftIcon,
-	FileIcon,
 	FolderIcon,
-	PaperPlaneTiltIcon,
-	PencilSimpleIcon,
 	PlusIcon,
 	TrashIcon,
 	TrayIcon,
@@ -23,16 +20,12 @@ import { useUIStore } from "~/hooks/useUIStore";
 
 const FOLDER_ICONS: Record<string, React.ReactNode> = {
 	[Folders.INBOX]: <TrayIcon size={18} weight="regular" />,
-	[Folders.SENT]: <PaperPlaneTiltIcon size={18} weight="regular" />,
-	[Folders.DRAFT]: <FileIcon size={18} weight="regular" />,
 	[Folders.ARCHIVE]: <ArchiveIcon size={18} weight="regular" />,
 	[Folders.TRASH]: <TrashIcon size={18} weight="regular" />,
 };
 
 const SYSTEM_FOLDER_LINKS = [
 	{ id: Folders.INBOX, label: "Inbox" },
-	{ id: Folders.SENT, label: "Sent" },
-	{ id: Folders.DRAFT, label: "Drafts" },
 	{ id: Folders.ARCHIVE, label: "Archive" },
 	{ id: Folders.TRASH, label: "Trash" },
 ];
@@ -78,7 +71,7 @@ export default function Sidebar() {
 	const navigate = useNavigate();
 	const { data: folders = [] } = useFolders(mailboxId);
 	const createFolderMutation = useCreateFolder();
-	const { startCompose, closeSidebar } = useUIStore();
+	const { closeSidebar } = useUIStore();
 	const { data: currentMailbox } = useMailbox(mailboxId);
 	const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
 	const [newFolderName, setNewFolderName] = useState("");
@@ -143,18 +136,6 @@ export default function Sidebar() {
 						{currentMailbox?.email || mailboxId}
 					</div>
 				</div>
-			</div>
-
-			{/* Compose */}
-			<div className="px-3 py-3">
-				<Button
-					variant="primary"
-					icon={<PencilSimpleIcon size={16} />}
-					onClick={() => startCompose()}
-					className="w-full"
-				>
-					Compose
-				</Button>
 			</div>
 
 			{/* Navigation */}

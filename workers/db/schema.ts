@@ -24,6 +24,8 @@ export const emails = sqliteTable("emails", {
 	read: integer("read").default(0),
 	starred: integer("starred").default(0),
 	body: text("body"),
+	body_text: text("body_text"),
+	body_html: text("body_html"),
 	in_reply_to: text("in_reply_to"),
 	email_references: text("email_references"),
 	thread_id: text("thread_id"),

@@ -93,7 +93,6 @@ export const mailboxMigrations: Migration[] = [
 
             INSERT INTO folders (id, name, is_deletable) VALUES
                 ('inbox', 'Inbox', 0),
-                ('sent', 'Sent', 0),
                 ('trash', 'Trash', 0),
                 ('archive', 'Archive', 0),
                 ('spam', 'Spam', 0);
@@ -135,20 +134,12 @@ export const mailboxMigrations: Migration[] = [
         `),
 	},
 	{
-		name: "3_add_draft_folder",
-		sql: txn(`INSERT INTO folders (id, name, is_deletable) VALUES ('draft', 'Drafts', 0);`),
-	},
-	{
 		name: "4_add_message_id",
 		sql: txn(`ALTER TABLE emails ADD COLUMN message_id TEXT;`),
 	},
 	{
 		name: "5_add_raw_headers",
 		sql: txn(`ALTER TABLE emails ADD COLUMN raw_headers TEXT;`),
-	},
-	{
-		name: "6_mark_sent_emails_as_read",
-		sql: txn(`UPDATE emails SET read = 1 WHERE folder_id = 'sent' AND read = 0;`),
 	},
 	{
 		name: "7_add_cc_bcc",
@@ -167,5 +158,10 @@ export const mailboxMigrations: Migration[] = [
             CREATE INDEX IF NOT EXISTS idx_emails_date ON emails(date);
             CREATE INDEX IF NOT EXISTS idx_emails_folder_date ON emails(folder_id, date DESC);
         `,
+	},
+	{
+		name: "9_add_body_variants",
+		sql: `ALTER TABLE emails ADD COLUMN body_text TEXT;
+		ALTER TABLE emails ADD COLUMN body_html TEXT;`,
 	},
 ];

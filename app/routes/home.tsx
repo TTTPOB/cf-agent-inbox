@@ -12,27 +12,25 @@ import {
 	Text,
 	useKumoToastManager,
 } from "@cloudflare/kumo";
-import { EnvelopeIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { EnvelopeIcon, PlusIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router";
 import api from "~/services/api";
 import {
 	useCreateMailbox,
-	useDeleteMailbox,
 	useMailboxes,
 } from "~/queries/mailboxes";
 import { queryKeys } from "~/queries/keys";
 
 export function meta() {
-	return [{ title: "Agentic Inbox" }];
+	return [{ title: "Personal Inbox" }];
 }
 
 export default function HomeRoute() {
 	const toastManager = useKumoToastManager();
 	const { data: mailboxes = [], refetch: refetchMailboxes, isFetched: mailboxesFetched } = useMailboxes();
 	const createMailbox = useCreateMailbox();
-	const deleteMailbox = useDeleteMailbox();
 
 	const { data: configData } = useQuery({
 		queryKey: queryKeys.config,
@@ -49,12 +47,6 @@ export default function HomeRoute() {
 	const [newName, setNewName] = useState("");
 	const [isCreating, setIsCreating] = useState(false);
 	const [createError, setCreateError] = useState<string | null>(null);
-	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-	const [mailboxToDelete, setMailboxToDelete] = useState<{
-		id: string;
-		email: string;
-	} | null>(null);
-	const [isDeleting, setIsDeleting] = useState(false);
 
 	// Set default domain when config loads
 	useEffect(() => {
@@ -110,21 +102,6 @@ export default function HomeRoute() {
 			setCreateError(message);
 		} finally {
 			setIsCreating(false);
-		}
-	};
-
-	const handleDelete = async () => {
-		if (!mailboxToDelete) return;
-		setIsDeleting(true);
-		try {
-			await deleteMailbox.mutateAsync(mailboxToDelete.id);
-			toastManager.add({ title: "Mailbox deleted" });
-			setIsDeleteOpen(false);
-			setMailboxToDelete(null);
-		} catch {
-			toastManager.add({ title: "Failed to delete mailbox", variant: "error" });
-		} finally {
-			setIsDeleting(false);
 		}
 	};
 
@@ -187,24 +164,6 @@ export default function HomeRoute() {
 										{account.email}
 									</div>
 								</div>
-								{!isConfigured && (
-									<Button
-										variant="ghost"
-										size="sm"
-										shape="square"
-										icon={<TrashIcon size={16} />}
-										aria-label={`Delete mailbox ${account.email}`}
-										onClick={(e) => {
-											e.preventDefault();
-											e.stopPropagation();
-											setMailboxToDelete({
-												id: account.id,
-												email: account.email,
-											});
-											setIsDeleteOpen(true);
-										}}
-									/>
-								)}
 							</RouterLink>
 						))}
 					</div>
@@ -224,7 +183,7 @@ export default function HomeRoute() {
 							<p className="text-sm text-kumo-subtle max-w-sm mb-5">
 								{isConfigured
 									? "Your email routing is configured but no mailboxes have been created yet. They will appear here automatically."
-									: "Create a mailbox to start sending and receiving emails with your domain."}
+									: "Create a mailbox to start receiving emails with your domain."}
 							</p>
 							{!isConfigured && (
 								<Button
@@ -320,44 +279,6 @@ export default function HomeRoute() {
 				</Dialog>
 			</Dialog.Root>
 
-			{/* Delete Dialog */}
-			<Dialog.Root
-				open={isDeleteOpen}
-				onOpenChange={(open) => {
-					setIsDeleteOpen(open);
-					if (!open) setMailboxToDelete(null);
-				}}
-			>
-				<Dialog size="sm" className="p-6">
-					<Dialog.Title className="text-base font-semibold mb-2">
-						Delete Mailbox
-					</Dialog.Title>
-					<Dialog.Description className="text-kumo-subtle text-sm mb-5">
-						Are you sure you want to delete{" "}
-						<strong className="text-kumo-default">
-							{mailboxToDelete?.email}
-						</strong>
-						? This action cannot be undone.
-					</Dialog.Description>
-					<div className="flex justify-end gap-2">
-						<Dialog.Close
-							render={(props) => (
-								<Button {...props} variant="secondary" size="sm">
-									Cancel
-								</Button>
-							)}
-						/>
-						<Button
-							variant="destructive"
-							size="sm"
-							loading={isDeleting}
-							onClick={handleDelete}
-						>
-							Delete
-						</Button>
-					</div>
-				</Dialog>
-			</Dialog.Root>
 		</div>
 	);
 }

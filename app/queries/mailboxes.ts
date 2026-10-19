@@ -49,13 +49,3 @@ export function useUpdateMailbox() {
 		},
 	});
 }
-
-export function useDeleteMailbox() {
-	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: (mailboxId: string) => api.deleteMailbox(mailboxId),
-		onSuccess: () => {
-			qc.invalidateQueries({ queryKey: queryKeys.mailboxes.all });
-		},
-	});
-}

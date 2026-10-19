@@ -104,17 +104,6 @@ function useInvalidateEmailData() {
 	};
 }
 
-export function useSendEmail() {
-	const invalidate = useInvalidateEmailData();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			email,
-		}: { mailboxId: string; email: unknown }) =>
-			api.sendEmail(mailboxId, email),
-		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
-	});
-}
 
 export function useUpdateEmail() {
 	const qc = useQueryClient();
@@ -204,17 +193,6 @@ export function useMarkThreadRead() {
 	});
 }
 
-export function useDeleteEmail() {
-	const invalidate = useInvalidateEmailData();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			id,
-		}: { mailboxId: string; id: string }) =>
-			api.deleteEmail(mailboxId, id),
-		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
-	});
-}
 
 export function useMoveEmail() {
 	const invalidate = useInvalidateEmailData();
@@ -225,55 +203,6 @@ export function useMoveEmail() {
 			folderId,
 		}: { mailboxId: string; id: string; folderId: string }) =>
 			api.moveEmail(mailboxId, id, folderId),
-		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
-	});
-}
-
-export function useSaveDraft() {
-	const invalidate = useInvalidateEmailData();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			draft,
-		}: {
-			mailboxId: string;
-			draft: {
-				to?: string;
-				cc?: string;
-				bcc?: string;
-				subject?: string;
-				body: string;
-				in_reply_to?: string;
-				thread_id?: string;
-				draft_id?: string;
-			};
-		}) => api.saveDraft(mailboxId, draft),
-		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
-	});
-}
-
-export function useReplyToEmail() {
-	const invalidate = useInvalidateEmailData();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			emailId,
-			email,
-		}: { mailboxId: string; emailId: string; email: unknown }) =>
-			api.replyToEmail(mailboxId, emailId, email),
-		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
-	});
-}
-
-export function useForwardEmail() {
-	const invalidate = useInvalidateEmailData();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			emailId,
-			email,
-		}: { mailboxId: string; emailId: string; email: unknown }) =>
-			api.forwardEmail(mailboxId, emailId, email),
 		onSuccess: (_data, { mailboxId }) => invalidate(mailboxId),
 	});
 }

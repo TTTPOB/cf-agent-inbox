@@ -2,14 +2,11 @@
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
-import { Badge, Button, Tooltip } from "@cloudflare/kumo";
+import { Button, Tooltip } from "@cloudflare/kumo";
 import {
 	CaretDownIcon,
 	CaretUpIcon,
 	CodeIcon,
-	PaperPlaneTiltIcon,
-	PencilSimpleIcon,
-	TrashIcon,
 } from "@phosphor-icons/react";
 import EmailAttachmentList from "~/components/EmailAttachmentList";
 import EmailIframe from "~/components/EmailIframe";
@@ -17,6 +14,7 @@ import {
 	formatDetailDate,
 	formatShortDate,
 	rewriteInlineImages,
+	getEmailBodyHtml,
 	stripHtml,
 } from "~/lib/utils";
 import type { Email } from "~/types";
@@ -26,29 +24,22 @@ interface ThreadMessageProps {
 	mailboxId?: string;
 	mailboxEmail?: string;
 	isLast: boolean;
-	isDraft?: boolean;
-	isSending?: boolean;
 	isExpanded: boolean;
 	onToggleExpand: () => void;
-	onSendDraft?: () => void;
-	onEditDraft?: () => void;
-	onDeleteDraft?: () => void;
 	onViewSource?: () => void;
 	onPreviewImage?: (url: string, filename: string) => void;
 }
 
-function Avatar({ isDraft, isSelf, sender }: { isDraft?: boolean; isSelf: boolean; sender: string }) {
+function Avatar({ isSelf, sender }: { isSelf: boolean; sender: string }) {
 	return (
 		<div
 			className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-				isDraft
-					? "bg-kumo-fill text-kumo-subtle"
-					: isSelf
+				isSelf
 						? "bg-kumo-brand text-kumo-inverse"
 						: "bg-kumo-fill text-kumo-default"
 			}`}
 		>
-			{isDraft ? "D" : sender.charAt(0).toUpperCase()}
+			{sender.charAt(0).toUpperCase()}
 		</div>
 	);
 }
@@ -58,19 +49,14 @@ export default function ThreadMessage({
 	mailboxId,
 	mailboxEmail,
 	isLast,
-	isDraft,
-	isSending,
 	isExpanded,
 	onToggleExpand,
-	onSendDraft,
-	onEditDraft,
-	onDeleteDraft,
 	onViewSource,
 	onPreviewImage,
 }: ThreadMessageProps) {
 	const isSelf = email.sender === mailboxEmail;
-	const containerClassName = `${!isLast ? "border-b border-kumo-line" : ""} ${isDraft ? "border-l-2 border-l-kumo-warning bg-kumo-warning/[0.02]" : ""}`;
-	const senderLabel = isDraft ? "Draft reply" : isSelf ? "You" : email.sender;
+	const containerClassName = `${!isLast ? "border-b border-kumo-line" : ""}`;
+	const senderLabel = isSelf ? "You" : email.sender;
 
 	if (!isExpanded) {
 		return (
@@ -80,7 +66,7 @@ export default function ThreadMessage({
 					onClick={onToggleExpand}
 					className="w-full flex items-center gap-3 px-4 py-3 hover:bg-kumo-tint rounded-lg text-left"
 				>
-					<Avatar isDraft={isDraft} isSelf={isSelf} sender={email.sender} />
+					<Avatar isSelf={isSelf} sender={email.sender} />
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center justify-between">
 							<span className="text-sm font-medium text-kumo-default truncate">
@@ -91,7 +77,7 @@ export default function ThreadMessage({
 							</span>
 						</div>
 						<p className="text-xs text-kumo-subtle truncate">
-							{stripHtml(email.body || "").slice(0, 80)}
+							{(email.body_text ?? stripHtml(email.body_html || email.body || "")).slice(0, 80)}
 						</p>
 					</div>
 					<CaretDownIcon size={14} className="text-kumo-subtle shrink-0" />
@@ -112,7 +98,7 @@ export default function ThreadMessage({
 							aria-label="Collapse message"
 						>
 							<div className="cursor-pointer hover:ring-2 hover:ring-kumo-brand/30 transition-shadow rounded-full">
-								<Avatar isDraft={isDraft} isSelf={isSelf} sender={email.sender} />
+								<Avatar isSelf={isSelf} sender={email.sender} />
 							</div>
 						</button>
 						<div className="min-w-0">
@@ -120,7 +106,6 @@ export default function ThreadMessage({
 								<span className="text-sm font-medium text-kumo-default truncate">
 									{senderLabel}
 								</span>
-								{isDraft && <Badge variant="outline">Draft</Badge>}
 							</div>
 							<div className="text-xs text-kumo-subtle">To: {email.recipient}</div>
 						</div>
@@ -158,8 +143,9 @@ export default function ThreadMessage({
 
 				<div className="md:ml-[42px]">
 					<EmailIframe
+					key={email.id}
 						body={rewriteInlineImages(
-							email.body || "",
+							getEmailBodyHtml(email),
 							mailboxId || "",
 							email.id,
 							email.attachments,
@@ -167,45 +153,6 @@ export default function ThreadMessage({
 						autoSize
 					/>
 				</div>
-
-				{isDraft && (onSendDraft || onEditDraft || onDeleteDraft) && (
-					<div className="flex gap-2 mt-3 md:ml-[42px]">
-						{onSendDraft && (
-							<Button
-								variant="primary"
-								size="sm"
-								icon={<PaperPlaneTiltIcon size={14} />}
-								onClick={onSendDraft}
-								loading={isSending}
-								disabled={isSending}
-							>
-								{isSending ? "Sending..." : "Send"}
-							</Button>
-						)}
-						{onEditDraft && (
-							<Button
-								variant="secondary"
-								size="sm"
-								icon={<PencilSimpleIcon size={14} />}
-								onClick={onEditDraft}
-								disabled={isSending}
-							>
-								Edit
-							</Button>
-						)}
-						{onDeleteDraft && (
-							<Button
-								variant="ghost"
-								size="sm"
-								icon={<TrashIcon size={14} />}
-								onClick={onDeleteDraft}
-								disabled={isSending}
-							>
-								Discard
-							</Button>
-						)}
-					</div>
-				)}
 
 				<EmailAttachmentList
 					mailboxId={mailboxId}

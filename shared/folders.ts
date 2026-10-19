@@ -5,8 +5,8 @@
 /**
  * Canonical folder ID constants.
  *
- * Every part of the stack — API routes, Durable Object, MCP, agent,
- * frontend sidebar — references folder IDs. This module is the single
+ * The API, Durable Object and frontend sidebar reference folder IDs.
+ * Sent/draft identifiers are retained only to recognize legacy data. This module is the single
  * source of truth so we don't scatter magic strings everywhere.
  */
 

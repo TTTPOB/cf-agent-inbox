@@ -2,18 +2,8 @@
 // Licensed under the Apache 2.0 license found in the LICENSE file or at:
 //     https://opensource.org/licenses/Apache-2.0
 
-export interface SignatureSettings {
-	enabled: boolean;
-	text: string;
-	html?: string;
-}
-
 export interface MailboxSettings {
 	fromName?: string;
-	forwarding?: { enabled: boolean; email: string };
-	signature?: SignatureSettings;
-	autoReply?: { enabled: boolean; subject: string; message: string };
-	agentSystemPrompt?: string;
 }
 
 export interface Mailbox {
@@ -36,6 +26,8 @@ export interface Email {
 	read: boolean;
 	starred: boolean;
 	body?: string | null;
+	body_text?: string | null;
+	body_html?: string | null;
 	in_reply_to?: string | null;
 	email_references?: string | null;
 	message_id?: string | null;
@@ -46,8 +38,6 @@ export interface Email {
 	thread_count?: number;
 	thread_unread_count?: number;
 	participants?: string;
-	needs_reply?: boolean;
-	has_draft?: boolean;
 }
 
 export interface Attachment {

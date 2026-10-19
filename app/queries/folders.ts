@@ -30,32 +30,3 @@ export function useCreateFolder() {
 		},
 	});
 }
-
-export function useUpdateFolder() {
-	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			id,
-			name,
-		}: { mailboxId: string; id: string; name: string }) =>
-			api.updateFolder(mailboxId, id, name),
-		onSuccess: (_data, { mailboxId }) => {
-			qc.invalidateQueries({ queryKey: queryKeys.folders.list(mailboxId) });
-		},
-	});
-}
-
-export function useDeleteFolder() {
-	const qc = useQueryClient();
-	return useMutation({
-		mutationFn: ({
-			mailboxId,
-			id,
-		}: { mailboxId: string; id: string }) =>
-			api.deleteFolder(mailboxId, id),
-		onSuccess: (_data, { mailboxId }) => {
-			qc.invalidateQueries({ queryKey: queryKeys.folders.list(mailboxId) });
-		},
-	});
-}

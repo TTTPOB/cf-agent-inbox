@@ -5,13 +5,9 @@
 import { Button, Pagination, Tooltip } from "@cloudflare/kumo";
 import {
 	ArchiveIcon,
-	ArrowBendUpLeftIcon,
 	ArrowsClockwiseIcon,
 	EnvelopeOpenIcon,
 	EnvelopeSimpleIcon,
-	FileIcon,
-	PaperPlaneTiltIcon,
-	PencilSimpleIcon,
 	StarIcon,
 	TrashIcon,
 	TrayIcon,
@@ -24,7 +20,6 @@ import { formatListDate } from "shared/dates";
 import MailboxSplitView from "~/components/MailboxSplitView";
 import { getSnippetText } from "~/lib/utils";
 import {
-	useDeleteEmail,
 	useEmails,
 	useMarkThreadRead,
 	useUpdateEmail,
@@ -42,29 +37,13 @@ const FOLDER_EMPTY_STATES: Record<
 		icon: React.ReactNode;
 		title: string;
 		description: string;
-		showCompose?: boolean;
 	}
 > = {
 	[Folders.INBOX]: {
 		icon: <TrayIcon size={48} weight="thin" className="text-kumo-subtle" />,
 		title: "Your inbox is empty",
 		description:
-			"New emails will appear here when they arrive. Send an email to get the conversation started.",
-		showCompose: true,
-	},
-	[Folders.SENT]: {
-		icon: (
-			<PaperPlaneTiltIcon size={48} weight="thin" className="text-kumo-subtle" />
-		),
-		title: "No sent emails",
-		description: "Emails you send will show up here.",
-		showCompose: true,
-	},
-	[Folders.DRAFT]: {
-		icon: <FileIcon size={48} weight="thin" className="text-kumo-subtle" />,
-		title: "No drafts",
-		description: "Emails you're still working on will be saved here.",
-		showCompose: true,
+			"New emails will appear here when they arrive.",
 	},
 	[Folders.ARCHIVE]: {
 		icon: <ArchiveIcon size={48} weight="thin" className="text-kumo-subtle" />,
@@ -76,7 +55,7 @@ const FOLDER_EMPTY_STATES: Record<
 		icon: <TrashIcon size={48} weight="thin" className="text-kumo-subtle" />,
 		title: "Trash is empty",
 		description:
-			"Deleted emails will appear here. You can restore them or permanently delete them.",
+			"Move emails here to set them aside. You can move them back at any time.",
 	},
 };
 
@@ -104,10 +83,8 @@ function EmailListSkeleton() {
 
 function FolderEmptyState({
 	folder,
-	onCompose,
 }: {
 	folder?: string;
-	onCompose: () => void;
 }) {
 	const config = (folder && FOLDER_EMPTY_STATES[folder]) || {
 		icon: (
@@ -126,16 +103,6 @@ function FolderEmptyState({
 			<p className="text-sm text-kumo-subtle max-w-xs mb-5">
 				{config.description}
 			</p>
-			{"showCompose" in config && config.showCompose && (
-				<Button
-					variant="primary"
-					size="sm"
-					icon={<PencilSimpleIcon size={16} />}
-					onClick={onCompose}
-				>
-					Compose
-				</Button>
-			)}
 		</div>
 	);
 }
@@ -147,17 +114,14 @@ export default function EmailListRoute() {
 	}>();
 	const {
 		selectedEmailId,
-		isComposing,
 		selectEmail,
 		closePanel,
-		startCompose,
 	} = useUIStore();
 	const [page, setPage] = useState(1);
 
 	const queryClient = useQueryClient();
 	const updateEmail = useUpdateEmail();
 	const markThreadRead = useMarkThreadRead();
-	const deleteEmail = useDeleteEmail();
 
 	const params = useMemo(
 		() => ({
@@ -184,7 +148,7 @@ export default function EmailListRoute() {
 		return folder ? folder.charAt(0).toUpperCase() + folder.slice(1) : "Inbox";
 	}, [folders, folder]);
 
-	const isPanelOpen = selectedEmailId !== null || isComposing;
+	const isPanelOpen = selectedEmailId !== null;
 
 	// Track folder identity to detect folder changes vs page changes
 	const prevFolderRef = useRef<string | undefined>(undefined);
@@ -208,17 +172,6 @@ export default function EmailListRoute() {
 				id: email.id,
 				data: { starred: !email.starred },
 			});
-	};
-
-	const handleDelete = (e: React.MouseEvent, emailId: string) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if (mailboxId) {
-			const confirmed = window.confirm("Are you sure you want to delete this email?");
-			if (!confirmed) return;
-			deleteEmail.mutate({ mailboxId, id: emailId });
-			if (selectedEmailId === emailId) closePanel();
-		}
 	};
 
 	const handleRefresh = () => {
@@ -271,7 +224,6 @@ export default function EmailListRoute() {
 	return (
 		<MailboxSplitView
 			selectedEmailId={selectedEmailId}
-			isComposing={isComposing}
 		>
 				{/* Folder header */}
 				<div className="flex items-center justify-between px-4 py-3.5 border-b border-kumo-line shrink-0 md:px-5">
@@ -372,18 +324,6 @@ export default function EmailListRoute() {
 														{email.thread_count}
 													</span>
 												)}
-												{email.has_draft && (
-													<span className="shrink-0 text-xs text-kumo-destructive font-medium">
-														Draft
-													</span>
-												)}
-												{email.needs_reply && !email.has_draft && (
-													<Tooltip content="Needs reply" asChild>
-														<span className="shrink-0 text-kumo-warning">
-															<ArrowBendUpLeftIcon size={14} weight="bold" />
-														</span>
-													</Tooltip>
-												)}
 												<span className="text-sm text-kumo-subtle shrink-0 ml-auto">
 													{formatListDate(email.date)}
 												</span>
@@ -422,16 +362,6 @@ export default function EmailListRoute() {
 													aria-label={email.read ? "Mark unread" : "Mark read"}
 												/>
 											</Tooltip>
-											<Tooltip content="Delete" asChild>
-												<Button
-													variant="ghost"
-													shape="square"
-													size="sm"
-													icon={<TrashIcon size={14} />}
-													onClick={(e) => handleDelete(e, email.id)}
-													aria-label="Delete"
-												/>
-											</Tooltip>
 										</div>
 									</div>
 								);
@@ -440,7 +370,6 @@ export default function EmailListRoute() {
 					) : (
 						<FolderEmptyState
 							folder={folder}
-							onCompose={() => startCompose()}
 						/>
 					)}
 				</div>

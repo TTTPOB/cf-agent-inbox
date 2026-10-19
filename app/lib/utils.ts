@@ -8,18 +8,13 @@
  * Date formatting has been consolidated into `shared/dates.ts`.
  * Re-export for backwards compatibility with existing imports.
  */
-import DOMPurify from "dompurify";
-import { formatQuotedDate } from "shared/dates";
-import type { Attachment } from "~/types";
+import type { Attachment, Email } from "~/types";
 
 export {
 	formatListDate,
 	formatDetailDate,
 	formatShortDate,
 } from "shared/dates";
-
-/** @deprecated Use `formatQuotedDate` from `shared/dates` directly. */
-export const formatComposeDate = formatQuotedDate;
 
 /**
  * Format a byte count as a human-readable file size.
@@ -31,44 +26,6 @@ export function formatBytes(bytes: number, decimals = 1): string {
 	const sizes = ["B", "KB", "MB", "GB"];
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
 	return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
-
-/**
- * Split a comma-separated email field into individual addresses.
- */
-export function splitEmailList(value?: string | null): string[] {
-	return (value || "")
-		.split(",")
-		.map((entry) => entry.trim())
-		.filter(Boolean);
-}
-
-/**
- * Convert a list of addresses into the API payload format.
- */
-export function toEmailListValue(addresses: string[]): string | string[] | undefined {
-	if (addresses.length === 0) return undefined;
-	return addresses.length === 1 ? addresses[0] : addresses;
-}
-
-/**
- * Convert HTML content to plain text.
- * Uses DOM APIs so must only be called client-side.
- */
-export function htmlToPlainText(html: string): string {
-	// Sanitize with DOMPurify before DOM parsing to prevent XSS during innerHTML assignment.
-	// DOMPurify strips all dangerous content (scripts, event handlers, etc.)
-	// while preserving structural HTML for text extraction.
-	const sanitized = DOMPurify.sanitize(html);
-	const div = document.createElement("div");
-	div.innerHTML = sanitized
-		.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-		.replace(/<br\s*\/?>/gi, "\n")
-		.replace(/<\/p>/gi, "\n\n")
-		.replace(/<p[^>]*>/gi, "")
-		.replace(/<div[^>]*>/gi, "")
-		.replace(/<\/div>/gi, "\n");
-	return (div.textContent || div.innerText || "").trim();
 }
 
 /**
@@ -129,46 +86,11 @@ export function escapeHtml(text: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-/**
- * Generate the HTML signature block for compose forms.
- */
-export function getSignatureBlock(settings?: {
-	signature?: { enabled: boolean; text?: string; html?: string };
-}): string {
-	const sig = settings?.signature;
-	if (sig?.enabled && (sig?.html || sig?.text)) {
-		// Sanitize HTML signatures with DOMPurify to allow safe formatting
-		// (bold, italic, links, etc.) while stripping scripts and event handlers.
-		// Text signatures are HTML-escaped since they have no formatting.
-		const content = sig.html
-			? DOMPurify.sanitize(sig.html)
-			: escapeHtml(sig.text || "");
-		return `<div style="border-top: 1px solid #ccc; margin-top: 16px; padding-top: 12px;">${content}</div>`;
-	}
-	return "";
-}
-
-/**
- * Build a quoted reply block HTML string from original email data.
- */
-export function buildQuotedReplyBlock(
-	dateStr: string | undefined,
-	sender: string,
-	body: string,
-): string {
-	if (!body) return "";
-	const formattedDate = formatComposeDate(dateStr);
-	
-	// HTML-escape sender to prevent <john@example.com> from disappearing as a tag
-	const escapedSender = escapeHtml(sender);
-
-	// Sanitize the body to plain text to prevent stored XSS.
-	// The original HTML renders safely in the sandboxed iframe, but quoted
-	// reply blocks are injected into the compose editor where raw HTML would
-	// execute. Convert to escaped plain text instead.
-	const bodyToQuote = escapeHtml(stripHtml(body)).replace(/\n/g, "<br>");
-
-	return `<br><blockquote style="border-left: 2px solid #ccc; margin: 0; padding-left: 1em; color: #666;">On ${formattedDate}, ${escapedSender} wrote:<br><br>${bodyToQuote}</blockquote>`;
+/** Prefer explicit MIME parts; keep legacy HTML bodies readable. */
+export function getEmailBodyHtml(email: Pick<Email, "body" | "body_text" | "body_html">): string {
+ if (email.body_html) return email.body_html;
+ if (email.body_text != null) return `<pre style="white-space: pre-wrap">${escapeHtml(email.body_text)}</pre>`;
+ return email.body || "";
 }
 
 /**
@@ -184,8 +106,8 @@ export function rewriteInlineImages(
 	if (!body || !attachments?.length) return body;
 	let result = body;
 	for (const att of attachments) {
-		if (att.disposition === "inline" && att.content_id) {
-			const url = `/api/v1/mailboxes/${mailboxId}/emails/${emailId}/attachments/${att.id}`;
+		if (att.content_id) {
+			const url = getAttachmentUrl(mailboxId, emailId, att.id);
 			// Strip angle brackets from content_id if present
 			const cid = att.content_id.startsWith("<")
 				? att.content_id.slice(1, -1)
@@ -205,7 +127,7 @@ export function getAttachmentUrl(
 	emailId: string,
 	attachmentId: string,
 ): string {
-	return `/api/v1/mailboxes/${mailboxId}/emails/${emailId}/attachments/${attachmentId}`;
+	return `/api/v1/mailboxes/${encodeURIComponent(mailboxId)}/emails/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`;
 }
 
 export function downloadFile(url: string, filename: string) {

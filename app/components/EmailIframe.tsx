@@ -30,6 +30,8 @@ interface EmailIframeProps {
 export default function EmailIframe({ body, autoSize }: EmailIframeProps) {
 	const iframeRef = useRef<HTMLIFrameElement>(null);
 	const [height, setHeight] = useState(autoSize ? 100 : 0);
+	const [loadedBody, setLoadedBody] = useState<string | null>(null);
+	const loadRemoteImages = loadedBody === body;
 
 	// Listen for height reports from the sandboxed iframe
 	const handleMessage = useCallback(
@@ -57,7 +59,7 @@ export default function EmailIframe({ body, autoSize }: EmailIframeProps) {
 
 	useEffect(() => {
 		const iframe = iframeRef.current;
-		if (!iframe || !body) return;
+		if (!iframe) return;
 
 		const cleanBody = DOMPurify.sanitize(body, {
 			USE_PROFILES: { html: true },
@@ -67,6 +69,9 @@ export default function EmailIframe({ body, autoSize }: EmailIframeProps) {
 		});
 
 		const padding = autoSize ? "0" : "24px";
+		// CID images are rewritten to private attachment URLs on this origin.
+		// Restrict the default HTTP source to that path, not all same-origin URLs.
+		const imageSources = `data: cid: ${window.location.origin}/api/v1/mailboxes/${loadRemoteImages ? " http: https:" : ""}`;
 
 		// Height-reporting script: sends body.scrollHeight to the parent.
 		// Runs inside the opaque-origin sandbox so it has zero access to
@@ -77,6 +82,8 @@ export default function EmailIframe({ body, autoSize }: EmailIframeProps) {
 					var h = document.body.scrollHeight;
 					if (h > 0) parent.postMessage({ __emailIframeHeight: true, height: h }, "*");
 				}
+				window.addEventListener("load", reportHeight, true);
+				window.addEventListener("resize", reportHeight);
 				reportHeight();
 				setTimeout(reportHeight, 50);
 				setTimeout(reportHeight, 150);
@@ -91,7 +98,7 @@ export default function EmailIframe({ body, autoSize }: EmailIframeProps) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: cid: https:; script-src 'unsafe-inline';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src ${imageSources}; script-src 'unsafe-inline';">
 <style>
 * { box-sizing: border-box; }
 html {
@@ -137,15 +144,22 @@ ul, ol { padding-left: 20px; margin: 4px 0; }
 </head>
 <body>${cleanBody}${heightScript}</body>
 </html>`;
-	}, [body, autoSize]);
+	}, [body, autoSize, loadRemoteImages]);
 
 	return (
+		<div className={autoSize ? "w-full" : "flex flex-col h-full min-h-0"}>
+			<div className="flex items-center gap-3 px-3 py-2 text-sm bg-kumo-recessed border-b border-kumo-line shrink-0">
+				<span>{loadRemoteImages ? "已允许此邮件加载外部图片。" : "已阻止外部图片，避免向发件人泄露阅读记录。"}</span>
+				{!loadRemoteImages && <button type="button" className="underline shrink-0" onClick={() => setLoadedBody(body)}>加载外部图片</button>}
+			</div>
 		<iframe
 			ref={iframeRef}
-			className="block w-full border-0"
+			className={autoSize ? "block w-full border-0" : "block w-full border-0 flex-1 min-h-0"}
 			style={autoSize ? { height: `${height}px` } : { height: "100%" }}
+			referrerPolicy="no-referrer"
 			sandbox="allow-scripts allow-popups allow-top-navigation-by-user-activation"
 			title="Email content"
 		/>
+		</div>
 	);
 }

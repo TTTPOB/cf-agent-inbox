@@ -9,12 +9,12 @@
  *   from:user@example.com    — filter by sender
  *   to:user@example.com      — filter by recipient
  *   subject:hello             — filter by subject
- *   in:inbox / in:sent        — filter by folder
+ *   in:inbox / in:archive        — filter by folder
  *   is:unread / is:read       — filter by read status
  *   is:starred                — filter by starred status
  *   has:attachment             — filter by attachment presence
  *   before:2025-01-01         — emails before date
- *   after:2025-01-01          — emails after date
+ *   after:2025-01-01          — emails on or after date (inclusive)
  *
  * Quoted values are supported: from:"John Doe" subject:"Re: Hello"
  * Everything that isn't an operator becomes the free-text query.
@@ -30,7 +30,7 @@ export interface ParsedSearch {
 	is_starred?: boolean;
 	has_attachment?: boolean;
 	date_start?: string;
-	date_end?: string;
+	date_before?: string;
 }
 
 // Matches operator:value or operator:"quoted value"
@@ -99,7 +99,7 @@ export function parseSearchQuery(input: string): ParsedSearch {
 				}
 				break;
 			case "before":
-				result.date_end = normalizeDate(value);
+				result.date_before = normalizeDate(value);
 				break;
 			case "after":
 				result.date_start = normalizeDate(value);

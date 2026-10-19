@@ -4,7 +4,7 @@
 
 import EmailAttachmentList from "~/components/EmailAttachmentList";
 import EmailIframe from "~/components/EmailIframe";
-import { formatDetailDate, rewriteInlineImages } from "~/lib/utils";
+import { formatDetailDate, rewriteInlineImages, getEmailBodyHtml } from "~/lib/utils";
 import type { Email } from "~/types";
 
 interface SingleMessageViewProps {
@@ -41,8 +41,9 @@ export default function SingleMessageView({
 
 			<div className="flex-1 min-h-0">
 				<EmailIframe
+					key={email.id}
 					body={rewriteInlineImages(
-						email.body || "",
+						getEmailBodyHtml(email),
 						mailboxId || "",
 						email.id,
 						email.attachments,
