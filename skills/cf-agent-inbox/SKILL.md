@@ -8,7 +8,7 @@ description: 使用 inbox CLI 读取个人收件箱、搜索邮件、查看正�
 需要读取、搜索或下载收件邮件时使用已安装的 `inbox` CLI。
 
 1. 先运行 `inbox --help`，发现可用命令。
-2. 操作前运行 `inbox help <命令>`（或该命令的 `--help`），按当前帮助选择参数。
+2. 运行 `inbox doctor --json` 确认当前服务和邮箱；操作前运行 `inbox help <命令>`（或该命令的 `--help`），按当前帮助选择参数。
 3. 配置、时间或输出规则有疑问时，通过全局帮助中的专题入口继续查询。需要程序化处理结果时，查阅 CLI 的 JSON 帮助。
 
 如果系统找不到 `inbox`，请用户按项目安装说明安装；不要把安装此 skill 当成安装了 CLI。认证使用用户提供的 Cloudflare Access Service Auth，配置方法查 CLI 帮助；不要索要用户把 secret 发到对话，也不要打印或提交凭据。

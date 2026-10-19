@@ -120,7 +120,8 @@ const pages: Record<string, string> = {
   doctor: String.raw`inbox doctor — 检查连接与认证
 用法：inbox doctor [通用选项]
 请求所选邮箱验证 API 可达，显示服务地址、邮箱、Node 版本、本地时区及 Service Token 配置状态。
-邮箱来自 --mailbox > INBOX_MAILBOX > 配置文件；Service Token 不自动绑定邮箱。
+默认邮箱来自 --mailbox > INBOX_MAILBOX > 配置文件；服务端按 Service Token 限制可访问邮箱，
+指定 --mailbox 只能切换到已获授权的邮箱，不能扩大权限。
 401/403 或 Access 登录页视为失败；无自动登录，检查 Service Token 及服务端策略。
 JSON：{"ok":true,"baseURL":"服务地址","mailbox":"邮箱地址","node":"版本","timezone":"时区","authenticated":true|false}。
 authenticated 表示配置状态，不包含 ID/secret；详见 inbox help json。
