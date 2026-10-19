@@ -90,7 +90,11 @@ test('详情纯文本优先、HTML fallback 与附件列表来源', async () => 
   try {
     const show = await cli(server.url, ['show', 'm', '--json']); assert.equal(JSON.parse(show.stdout).body_text, 'hello');
     const attachments = await cli(server.url, ['attachments', 'm', '--json']); assert.equal(JSON.parse(attachments.stdout).attachments[0].id, 'a');
-    const doctor = await cli(server.url, ['doctor', '--json']); assert.equal(JSON.parse(doctor.stdout).ok, true);
+    const doctor = await cli(server.url, ['doctor', '--json']); const identity = JSON.parse(doctor.stdout);
+    assert.equal(identity.ok, true); assert.equal(identity.baseURL, server.url); assert.equal(identity.mailbox, 'reader@example.com');
+    assert(!doctor.stdout.includes('test-secret'));
+    const overridden = await cli(server.url, ['doctor', '--mailbox', 'other@example.com', '--json']);
+    assert.equal(JSON.parse(overridden.stdout).mailbox, 'other@example.com');
   } finally { await server.close(); }
 });
 

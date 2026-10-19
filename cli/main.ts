@@ -67,8 +67,8 @@ export async function run(args: string[], output: (value: string) => void = (val
   const emit = (data: unknown, text: string) => output(values.json ? JSON.stringify(data) : text);
   if (command === 'doctor') {
     await api.json('');
-    const result = { ok: true, node: process.versions.node, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, authenticated: !!config.accessClientId };
-    emit(result, '连接正常；时区：' + result.timezone + '；Access service token：' + (result.authenticated ? '已配置' : '未配置（仅本地开发适用）'));
+    const result = { ok: true, baseURL: config.baseURL, mailbox: config.mailbox, node: process.versions.node, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, authenticated: !!config.accessClientId };
+    emit(result, '连接正常\n服务：' + result.baseURL + '\n邮箱：' + result.mailbox + '\n时区：' + result.timezone + '；Access service token：' + (result.authenticated ? '已配置' : '未配置（仅本地开发适用）'));
     return;
   }
   if (command === 'list' || command === 'search') {

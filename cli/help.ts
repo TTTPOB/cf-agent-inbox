@@ -81,7 +81,7 @@ const json = String.raw`JSON 与退出码
   attachments   {"attachments":[...]}
   download      {"files":["绝对目标路径",...]}
   export        {"files":["绝对目标路径"]}
-  doctor        {"ok":true,"node":"版本","timezone":"时区","authenticated":true|false}
+  doctor        {"ok":true,"baseURL":"服务地址","mailbox":"邮箱地址","node":"版本","timezone":"时区","authenticated":true|false}
                 authenticated 仅表示配置了 Service Token；连接/认证失败仍退出非 0。
 --all 下载部分成功后若失败，不输出成功 JSON，先前完成的文件仍保留。
 示例：inbox list --since 24h --json > inbox-page.json`;
@@ -119,9 +119,10 @@ const globalHelp = String.raw`只读收件 CLI — inbox
 const pages: Record<string, string> = {
   doctor: String.raw`inbox doctor — 检查连接与认证
 用法：inbox doctor [通用选项]
-请求默认邮箱以验证 API 可达，显示 Node 版本、本地时区和是否配置 Service Token。
+请求所选邮箱验证 API 可达，显示服务地址、邮箱、Node 版本、本地时区及 Service Token 配置状态。
+邮箱来自 --mailbox > INBOX_MAILBOX > 配置文件；Service Token 不自动绑定邮箱。
 401/403 或 Access 登录页视为失败；无自动登录，检查 Service Token 及服务端策略。
-JSON：{"ok":true,"node":"版本","timezone":"时区","authenticated":true|false}。
+JSON：{"ok":true,"baseURL":"服务地址","mailbox":"邮箱地址","node":"版本","timezone":"时区","authenticated":true|false}。
 authenticated 表示配置状态，不包含 ID/secret；详见 inbox help json。
 示例：inbox doctor --json
 
